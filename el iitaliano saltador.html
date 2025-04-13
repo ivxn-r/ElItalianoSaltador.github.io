@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Italiano Saltador</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Press Start 2P', cursive;
+      background: linear-gradient(to bottom right, #001220, #003366);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    #menu {
+      text-align: center;
+      margin: 30px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 4px solid #0ff;
+      border-radius: 20px;
+      box-shadow: 0 0 20px #0ff;
+    }
+
+    canvas {
+      border: 3px solid #0ff;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      display: none;
+      max-width: 100%;
+      height: auto;
+    }
+
+    #fantasmometro {
+      font-size: 16px;
+      margin-top: 10px;
+      color: #0ff;
+      text-shadow: 0 0 5px #0ff;
+    }
+
+    select, button {
+      padding: 12px;
+      margin: 10px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 2px solid #0ff;
+      background-color: #111;
+      color: #0ff;
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff;
+    }
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <h1>🎮 El Italiano Saltador 🎮</h1>
+    <label for="nivel">Dificultad:</label>
+    <select id="nivel">
+      <option value="1">Fácil</option>
+      <option value="2">Medio</option>
+      <option value="3">Difícil</option>
+    </select><br>
+
+    <label for="personaje">Personaje:</label>
+    <select id="personaje">
+      <option value="momo">Momo</option>
+      <option value="elbana">ElBana</option>
+      <option value="especial">Especial</option>
+    </select><br>
+
+    <button onclick="iniciarJuego()">¡Jugar!</button>
+  </div>
+
+  <canvas id="juego" width="900" height="500"></canvas>
+  <div id="fantasmometro">FANTASMÓMETRO: 0 m</div>
+
+  <audio id="musicaFondo" loop autoplay>
+    <source src="assets/musica.mp3" type="audio/mpeg">
+    Tu navegador no soporta el audio.
+  </audio>
+
+  <script>
+    const canvas = document.getElementById('juego');
+    const ctx = canvas.getContext('2d');
+    const musica = document.getElementById('musicaFondo');
+    const fantasmometro = document.getElementById('fantasmometro');
+
+    let jugador = { x: 80, y: 400, width: 60, height: 60, vy: 0, saltando: false, imagen: null };
+    let gravedad = 1;
+    let obstaculos = [];
+    let dificultad = 1;
+    let jugando = false;
+    let obstaculoIntervalo;
+    let metros = 0;
+    let fondoActual = 'dia';
+    let distanciaCambioFondo = 1000;
+
+    const imagenes = {
+      momo: new Image(),
+      elbana: new Image(),
+      especial: new Image(),
+      fondoDia: new Image(),
+      fondoNoche: new Image()
+    };
+    imagenes.momo.src = 'assets/momo.png';
+    imagenes.elbana.src = 'assets/elbana.png';
+    imagenes.especial.src = 'assets/especial.png';
+    imagenes.fondoDia.src = 'assets/fondo_dia.png';
+    imagenes.fondoNoche.src = 'assets/fondo_noche.png';
+
+    function iniciarJuego() {
+      document.getElementById('menu').style.display = 'none';
+      canvas.style.display = 'block';
+      dificultad = parseInt(document.getElementById('nivel').value);
+      const personaje = document.getElementById('personaje').value;
+
+      jugador.imagen = imagenes[personaje];
+      jugador.y = 400;
+      jugador.vy = 0;
+      jugador.saltando = false;
+      obstaculos = [];
+      metros = 0;
+      fondoActual = 'dia';
+      jugando = true;
+      clearInterval(obstaculoIntervalo);
+      generarObstaculos();
+      requestAnimationFrame(bucleJuego);
+    }
+
+    function generarObstaculos() {
+      let intervalo = 1000 - (dificultad * 250);
+      obstaculoIntervalo = setInterval(() => {
+        if (!jugando) return;
+
+        const tipo = Math.floor(Math.random() * 3);
+        let obs = {
+          x: canvas.width,
+          y: 0,
+          width: 30 + Math.random() * 60,
+          height: 50 + Math.random() * 100
+        };
+
+        obs.y = canvas.height - obs.height - (Math.random() * 100);
+        obstaculos.push(obs);
+      }, intervalo);
+    }
+
+    function bucleJuego() {
+      if (!jugando) return;
+
+      // Cambiar fondo por tiempo
+      canvas.style.backgroundImage = fondoActual === 'dia' ? "url('assets/fondo_dia.png')" : "url('assets/fondo_noche.png')";
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      jugador.vy += gravedad;
+      jugador.y += jugador.vy;
+
+      if (jugador.y >= canvas.height - jugador.height) {
+        jugador.y = canvas.height - jugador.height;
+        jugador.vy = 0;
+        jugador.saltando = false;
+      }
+
+      if (jugador.imagen && jugador.imagen.complete) {
+        ctx.drawImage(jugador.imagen, jugador.x, jugador.y, jugador.width, jugador.height);
+      } else {
+        ctx.fillStyle = 'gray';
+        ctx.fillRect(jugador.x, jugador.y, jugador.width, jugador.height);
+      }
+
+      for (let i = 0; i < obstaculos.length; i++) {
+        let obs = obstaculos[i];
+        obs.x -= 6 * dificultad;
+        ctx.fillStyle = '#ff0';
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+
+        if (
+          jugador.x < obs.x + obs.width &&
+          jugador.x + jugador.width > obs.x &&
+          jugador.y < obs.y + obs.height &&
+          jugador.y + jugador.height > obs.y
+        ) {
+          jugando = false;
+          musica.pause();
+          alert('¡Perdiste! Desarrollado por Iván Azuaga');
+          location.reload();
+        }
+      }
+
+      obstaculos = obstaculos.filter(obs => obs.x + obs.width > 0);
+
+      metros += 1 * dificultad;
+      fantasmometro.innerText = `FANTASMÓMETRO: ${Math.floor(metros)} m`;
+
+      if (metros >= distanciaCambioFondo) {
+        fondoActual = fondoActual === 'dia' ? 'noche' : 'dia';
+        distanciaCambioFondo += 1000;
+      }
+
+      requestAnimationFrame(bucleJuego);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !jugador.saltando) {
+        jugador.vy = -20;
+        jugador.saltando = true;
+      }
+    });
+
+    window.addEventListener('touchstart', () => {
+      if (!jugador.saltando) {
+        jugador.vy = -20;
+        jugador.saltando = true;
+      }
+    });
+  </script>
+</body>
+</html>
